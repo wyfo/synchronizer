@@ -4,8 +4,8 @@ Another concurrency permutation testing tool for Rust.
 ## Example
 
 The following program can fail if the thread run before the assertion. *synchronizer* will trigger the failure
-```
-use std::sync::{atomic::AtomicU8, Arc};
+```rust
+use std::sync::Arc;
 
 use synchronizer::{
     sync::atomic::{AtomicBool, Ordering},
@@ -33,7 +33,7 @@ In case of failure, *synchronize* will print the execution summary, with threads
 
 ## Difference with *loom*
 
-I don't know how [*loom*](https://github.com/tokio-rs/loom) works in detail, but *synchronizer* don't do causality calculus, it just runs the program one thread at a time.
+I don't know how [*loom*](https://github.com/tokio-rs/loom) works in detail, but *synchronizer* don't do causality computations, it just runs the program one thread at a time.
 
 Also, in unsynchronized-context (when `synchronizer::run` is not called), *synchronizer* wrapper functions/types just works as the wrapped functions/types. In fact, most of the wrapped types are `#[repr(transparent)]`. 
 So you can just add *synchronizer* to `[dev-dependencies]` and use it in normal tests; there is no need of `--cfg synchronizer`.
