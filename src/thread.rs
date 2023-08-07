@@ -85,6 +85,14 @@ impl Thread {
     }
 }
 
+/// [`std::thread::current`] mock.
+pub fn current() -> Thread {
+    Thread {
+        thread_id: crate::runtime::ThreadId::current(),
+        thread: std::thread::current(),
+    }
+}
+
 /// [`std::thread::JoinHandle`] mock.
 #[derive(Debug)]
 pub struct JoinHandle<T> {
