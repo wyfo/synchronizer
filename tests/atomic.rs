@@ -1,7 +1,8 @@
-use std::sync::{atomic::AtomicU8, Arc};
-
 use synchronizer::{
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, AtomicU8, Ordering},
+        Arc,
+    },
     thread,
 };
 

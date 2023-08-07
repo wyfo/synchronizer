@@ -1,6 +1,7 @@
-use std::sync::Arc;
-
-use synchronizer::{sync::Mutex, thread};
+use synchronizer::{
+    sync::{Arc, Mutex},
+    thread,
+};
 
 #[test]
 #[should_panic]
