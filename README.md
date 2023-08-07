@@ -19,7 +19,7 @@ synchronizer::run(|| {
         b2.store(true, Ordering::Relaxed);
     });
     assert!(!b.load(Ordering::Relaxed));
-    thread.join().map_err(std::panic::resume_unwind).unwrap();
+    thread.join().unwrap();
 }); // panics
 ```
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::{
     runtime::Runtime,
-    synchronizer::{synchronize, synchronized},
+    synchronizer::{is_synchronized, synchronize, synchronized},
 };
 
 /// [`std::thread::Builder`] mock.
@@ -87,10 +87,13 @@ impl Thread {
 
 /// [`std::thread::current`] mock.
 pub fn current() -> Thread {
-    Thread {
-        thread_id: crate::runtime::ThreadId::current(),
-        thread: std::thread::current(),
-    }
+    let thread_id = if is_synchronized() {
+        crate::runtime::ThreadId::current()
+    } else {
+        crate::runtime::ThreadId::DUMMY
+    };
+    let thread = std::thread::current();
+    Thread { thread_id, thread }
 }
 
 /// [`std::thread::JoinHandle`] mock.

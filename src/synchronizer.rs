@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
     io::Write,
     panic,
-    panic::{catch_unwind, RefUnwindSafe, UnwindSafe},
+    panic::{RefUnwindSafe, UnwindSafe},
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc, Mutex,
@@ -32,7 +32,7 @@ impl Synchronizer {
     }
 
     fn run<R: TestResult>(&self, test: impl Fn() -> R + UnwindSafe) -> bool {
-        if let Err(err) = catch_unwind(test) {
+        if let Err(err) = panic::catch_unwind(test) {
             self.runtime.lock().unwrap().print();
             panic::resume_unwind(err);
         }
@@ -40,14 +40,21 @@ impl Synchronizer {
     }
 
     #[inline]
-    fn update_running_thread(&self, update_runtime: impl FnOnce(&mut Runtime) -> Option<ThreadId>) {
+    fn update_running_thread(
+        &self,
+        update_runtime: impl FnOnce(&mut Runtime) -> Option<ThreadId>,
+    ) -> bool {
         let mut runtime = self.runtime.lock().unwrap();
         let Some(next) = update_runtime(&mut runtime) else {
             drop(runtime);
             panic!("all threads are blocked");
         };
+        if next == ThreadId::current() {
+            return false;
+        }
         self.running_thread.store(next.get(), Ordering::Relaxed);
         runtime.unpark_running_thread(next);
+        true
     }
 
     #[inline]
@@ -73,7 +80,7 @@ impl Synchronizer {
         let synchronizer = self.clone();
         let spawned_id = synchronizer.runtime.lock().unwrap().spawn(location);
         self.running_thread
-            .store(ThreadId::DUMMY.get(), Ordering::Relaxed);
+            .store(spawned_id.get(), Ordering::Relaxed);
         let handle = builder.spawn(move || {
             SYNCHRONIZER.with(|cell| cell.replace(Some(synchronizer)));
             synchronize(|rt, _| rt.start_thread());
@@ -93,7 +100,7 @@ impl Synchronizer {
         let synchronizer = self.clone();
         let spawned_id = synchronizer.runtime.lock().unwrap().spawn(location);
         self.running_thread
-            .store(ThreadId::DUMMY.get(), Ordering::Relaxed);
+            .store(spawned_id.get(), Ordering::Relaxed);
         let handle = scope.spawn(|| {
             SYNCHRONIZER.with(|cell| cell.replace(Some(synchronizer)));
             synchronize(|rt, _| rt.start_thread());
@@ -118,8 +125,9 @@ pub(crate) fn synchronize(
     let location = panic::Location::caller();
     SYNCHRONIZER.with(|cell| {
         if let Some(synchronizer) = cell.borrow().as_ref() {
-            synchronizer.update_running_thread(|rt| update_runtime(rt, location));
-            synchronizer.park();
+            if synchronizer.update_running_thread(|rt| update_runtime(rt, location)) {
+                synchronizer.park();
+            };
             return true;
         }
         false

@@ -16,7 +16,7 @@ fn simple_invalid() {
             b2.store(true, Ordering::Relaxed);
         });
         assert!(!b.load(Ordering::Relaxed));
-        thread.join().map_err(std::panic::resume_unwind).unwrap();
+        thread.join().unwrap();
     });
 }
 
@@ -29,7 +29,7 @@ fn simple_valid() {
             assert!(int2.fetch_add(1, Ordering::Relaxed) <= 2);
         });
         assert!(int.fetch_add(1, Ordering::Relaxed) <= 2);
-        thread.join().map_err(std::panic::resume_unwind).unwrap();
+        thread.join().unwrap();
         assert_eq!(int.load(Ordering::Relaxed), 2);
     });
 }

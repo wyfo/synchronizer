@@ -13,7 +13,7 @@ fn simple_invalid() {
             *b2.lock().unwrap() = true;
         });
         assert!(!*b.lock().unwrap());
-        thread.join().map_err(std::panic::resume_unwind).unwrap();
+        thread.join().unwrap();
     });
 }
 
@@ -32,7 +32,7 @@ fn simple_all_blocked() {
         *lock += 1;
         assert!(*lock <= 2);
         // don't drop the lock before joining
-        thread.join().map_err(std::panic::resume_unwind).unwrap();
+        thread.join().unwrap();
         assert_eq!(*int.lock().unwrap(), 2);
     });
 }
@@ -51,7 +51,7 @@ fn simple_valid() {
         *lock += 1;
         assert!(*lock <= 2);
         drop(lock);
-        thread.join().map_err(std::panic::resume_unwind).unwrap();
+        thread.join().unwrap();
         assert_eq!(*int.lock().unwrap(), 2);
     });
 }

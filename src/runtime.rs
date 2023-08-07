@@ -6,12 +6,21 @@ use std::{
 
 pub(crate) type Location = &'static panic::Location<'static>;
 
-#[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub(crate) struct ThreadId(usize);
 
 impl ThreadId {
+    fn set_current(thread_id: Self) {
+        THREAD_ID.with(|cell| {
+            assert_eq!(cell.get(), Self::DUMMY);
+            cell.set(thread_id);
+        });
+    }
+
     pub(crate) fn current() -> Self {
-        THREAD_ID.with(|cell| cell.get())
+        let current = THREAD_ID.with(|cell| cell.get());
+        assert_ne!(current, Self::DUMMY);
+        current
     }
 
     pub(crate) fn get(self) -> usize {
@@ -70,13 +79,13 @@ impl Runtime {
     }
 
     pub(crate) fn prepare_next_execution(&mut self) -> bool {
-        self.spawned_thread_count = 0;
         self.threads.clear();
         self.barriers.clear();
         self.mutexes.clear();
         self.onces.clear();
         self.rwlocks.clear();
-        self.add_thread();
+        self.spawned_thread_count = 1;
+        self.threads.insert(Self::main_thread(), ThreadState::new());
         let mut running_threads: BTreeSet<_> = self.threads.keys().copied().collect();
         for step in self.steps.iter_mut().rev() {
             if step.prepare_next_execution(&mut running_threads) {
@@ -89,11 +98,16 @@ impl Runtime {
         !self.steps.is_empty()
     }
 
+    pub(crate) fn main_thread() -> ThreadId {
+        ThreadId(0)
+    }
+
+    // Must be called in the added thread
     fn add_thread(&mut self) {
         let thread_id = ThreadId(self.spawned_thread_count);
-        THREAD_ID.with(|cell| cell.set(thread_id));
-        self.threads.insert(thread_id, ThreadState::new());
+        ThreadId::set_current(thread_id);
         self.spawned_thread_count += 1;
+        self.threads.insert(thread_id, ThreadState::new());
     }
 
     fn add_step(
